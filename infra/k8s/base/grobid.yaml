@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grobid
+  namespace: fixmypaper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grobid
+  template:
+    metadata:
+      labels:
+        app: grobid
+    spec:
+      containers:
+      - name: grobid
+        image: grobid/grobid:0.8.0
+        ports:
+        - containerPort: 8070
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grobid
+  namespace: fixmypaper
+spec:
+  selector:
+    app: grobid
+  ports:
+  - protocol: TCP
+    port: 8070
+    targetPort: 8070

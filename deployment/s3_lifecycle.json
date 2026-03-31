@@ -1,0 +1,14 @@
+{
+    "Rules": [
+        {
+            "ID": "DeleteOldFiles",
+            "Filter": {
+                "Prefix": ""
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 7
+            }
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fixmypaper-api
+  namespace: fixmypaper
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fixmypaper-api
+  template:
+    metadata:
+      labels:
+        app: fixmypaper-api
+    spec:
+      serviceAccountName: fixmypaper-sa
+      containers:
+      - name: api
+        image: fixmypaper-api:latest
+        ports:
+        - containerPort: 5001
+        envFrom:
+        - configMapRef:
+            name: fixmypaper-config
+        - secretRef:
+            name: fixmypaper-secrets
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5001
+          initialDelaySeconds: 5
+          periodSeconds: 10
