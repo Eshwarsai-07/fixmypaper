@@ -4,7 +4,7 @@ import uuid
 import fitz # PyMuPDF
 from botocore.exceptions import NoCredentialsError
 from fastapi import HTTPException
-from backend.app.core.config import settings
+from app.core.config import settings
 
 S3_BUCKET = settings.S3_BUCKET_NAME
 S3_REGION = settings.AWS_REGION

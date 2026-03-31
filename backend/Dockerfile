@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt .
+# Fix: Backend context is already 'backend', so requirements.txt is at root
+COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Stage 2: Runtime
@@ -35,5 +36,7 @@ COPY . .
 # Set Python path to find the backend module
 ENV PYTHONPATH=/app
 
-# Default command can be overridden for worker
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:10000", "backend.app.main:app"]
+EXPOSE 10000
+
+# Fix: If root is backend, the module path is app.main:app
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:10000", "app.main:app"]

@@ -7,10 +7,10 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.app.core.logging_config import setup_logging
-from backend.app.api.routes import router as api_router
-from backend.app.services.database import init_db
-from backend.app.core.config import settings
+from app.core.logging_config import setup_logging
+from app.api.routes import router as api_router
+from app.services.database import init_db
+from app.core.config import settings
 
 # Configure Structlog
 setup_logging()
@@ -58,4 +58,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=10000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=10000, reload=True)

@@ -25,8 +25,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/fixmypaper
       REDIS_URL: redis://redis:6379/0
@@ -45,9 +45,9 @@ services:
 
   worker:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
-    command: celery -A backend.app.workers.tasks.celery_app worker --loglevel=info
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.workers.tasks.celery_app worker --loglevel=info
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/fixmypaper
       REDIS_URL: redis://redis:6379/0

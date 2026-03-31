@@ -4,13 +4,13 @@ import structlog
 from celery import Celery
 from celery.exceptions import SoftTimeLimitExceeded
 
-from backend.app.core.config import settings
-from backend.app.services.database import SessionLocal
-from backend.app.models.job import Job
-from backend.app.services.storage import StorageManager
-from backend.app.services.pdf_processor import PDFErrorDetector
+from app.core.config import settings
+from app.services.database import SessionLocal
+from app.models.job import Job
+from app.services.storage import StorageManager
+from app.services.pdf_processor import PDFErrorDetector
 
-from backend.app.core.logging_config import setup_logging
+from app.core.logging_config import setup_logging
 
 setup_logging()
 logger = structlog.get_logger()

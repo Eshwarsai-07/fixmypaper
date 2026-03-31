@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from backend.app.models.job import Job
-from backend.app.services.database import get_db
-from backend.app.services.storage import StorageManager
-from backend.app.core.config import settings
+from app.models.job import Job
+from app.services.database import get_db
+from app.services.storage import StorageManager
+from app.core.config import settings
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -46,7 +46,7 @@ async def upload_file(
         db.commit()
 
         # Trigger Celery Task
-        from backend.worker import celery_app
+        from worker import celery_app
         from structlog.contextvars import get_contextvars
         
         correlation_id = get_contextvars().get("correlation_id", str(uuid.uuid4()))
