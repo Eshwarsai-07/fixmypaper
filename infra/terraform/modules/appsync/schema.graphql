@@ -1,0 +1,27 @@
+type JobStatus {
+  job_id: ID!
+  status: String!
+  s3_key: String
+  result_s3_key: String
+  error: String
+  updated_at: String
+}
+
+type Query {
+  getJobStatus(job_id: ID!): JobStatus
+}
+
+type Mutation {
+  publishJobUpdate(job_id: ID!, status: String!, s3_key: String, result_s3_key: String, error: String, updated_at: String): JobStatus
+}
+
+type Subscription {
+  onJobUpdate(job_id: ID!): JobStatus
+    @aws_subscribe(mutations: ["publishJobUpdate"])
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

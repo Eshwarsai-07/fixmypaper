@@ -10,14 +10,34 @@ output "eks_cluster_endpoint" {
   value = module.eks.cluster_endpoint
 }
 
-output "rds_endpoint" {
-  value = module.rds.db_instance_endpoint
+output "ecr_repository_url_api" {
+  value = module.ecr.api_repository_url
+}
+
+output "ecr_repository_url_worker" {
+  value = module.ecr.worker_repository_url
+}
+
+output "cognito_user_pool_id" {
+  value = module.cognito.user_pool_id
+}
+
+output "cognito_client_id" {
+  value = module.cognito.client_id
+}
+
+output "appsync_graphql_url" {
+  value = module.appsync.graphql_url
 }
 
 output "s3_bucket_name" {
   value = module.s3.bucket_name
 }
 
-output "alb_dns_name" {
-  value = module.alb.dns_name
+output "rds_endpoint" {
+  value = module.rds.db_instance_endpoint
+}
+
+output "standard_sfn_arn" {
+  value = module.step_functions.standard_sfn_arn
 }

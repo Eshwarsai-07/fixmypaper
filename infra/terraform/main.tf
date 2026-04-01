@@ -53,3 +53,46 @@ module "alb" {
   project_name = var.project_name
   vpc_id       = module.vpc.vpc_id
 }
+
+module "ecr" {
+  source       = "./modules/ecr"
+  project_name = var.project_name
+}
+
+module "sqs" {
+  source       = "./modules/sqs"
+  project_name = var.project_name
+}
+
+module "dynamodb" {
+  source       = "./modules/dynamodb"
+  project_name = var.project_name
+}
+
+module "cognito" {
+  source       = "./modules/cognito"
+  project_name = var.project_name
+}
+
+module "appsync" {
+  source       = "./modules/appsync"
+  project_name = var.project_name
+}
+
+module "step_functions" {
+  source              = "./modules/step_functions"
+  project_name        = var.project_name
+  dynamodb_table_name = module.dynamodb.table_name
+  sqs_queue_url       = module.sqs.queue_url
+  s3_bucket_name      = var.s3_bucket_name
+  api_worker_url      = var.api_worker_url
+}
+
+module "monitoring" {
+  source                = "./modules/monitoring"
+  project_name          = var.project_name
+  sqs_queue_name        = module.sqs.queue_name
+  sqs_backlog_threshold = var.sqs_backlog_threshold
+  sfn_arn               = module.step_functions.standard_sfn_arn
+  aws_region            = var.aws_region
+}

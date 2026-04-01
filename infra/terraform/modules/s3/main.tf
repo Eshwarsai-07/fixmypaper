@@ -11,6 +11,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
   rule {
     id      = "DeleteOldFiles"
     status  = "Enabled"
+    filter {}
     expiration {
       days = 7
     }

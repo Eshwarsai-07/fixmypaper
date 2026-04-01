@@ -55,6 +55,14 @@ class StorageManager:
             return None
 
     @staticmethod
+    def get_file_etag(s3_key: str):
+        try:
+            response = s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
+            return response['ETag'].strip('"')
+        except Exception as e:
+            return None
+
+    @staticmethod
     def download_from_s3(s3_key: str, local_path: str):
         try:
             s3_client.download_file(S3_BUCKET, s3_key, local_path)

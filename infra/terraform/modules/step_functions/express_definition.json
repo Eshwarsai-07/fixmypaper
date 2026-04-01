@@ -1,0 +1,18 @@
+{
+  "StartAt": "ProcessTask",
+  "States": {
+    "ProcessTask": {
+      "Type": "Task",
+      "Resource": "${API_WORKER_URL}",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "End": true
+    }
+  }
+}

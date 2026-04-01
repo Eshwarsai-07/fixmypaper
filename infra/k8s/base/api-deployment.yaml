@@ -16,9 +16,9 @@ spec:
       serviceAccountName: fixmypaper-sa
       containers:
       - name: api
-        image: fixmypaper-api:latest
+        image: API_IMAGE_PLACEHOLDER
         ports:
-        - containerPort: 5001
+        - containerPort: 10000
         envFrom:
         - configMapRef:
             name: fixmypaper-config
@@ -34,12 +34,12 @@ spec:
         livenessProbe:
           httpGet:
             path: /api/health
-            port: 5001
+            port: 10000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /api/health
-            port: 5001
+            port: 10000
           initialDelaySeconds: 5
           periodSeconds: 10

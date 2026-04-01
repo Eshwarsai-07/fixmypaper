@@ -9,7 +9,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.logging_config import setup_logging
 from app.api.routes import router as api_router
-from app.services.database import init_db
 from app.core.config import settings
 
 # Configure Structlog
@@ -17,8 +16,7 @@ setup_logging()
 
 logger = structlog.get_logger()
 
-# Initialize DB
-init_db()
+# Note: RDS initialization removed for 2.0 (using DynamoDB)
 
 # Correlation ID Middleware
 class CorrelationIdMiddleware(BaseHTTPMiddleware):

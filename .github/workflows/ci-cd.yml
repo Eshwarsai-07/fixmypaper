@@ -1,0 +1,115 @@
+name: FixMyPaper 2.0 CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  id-token: write # Mandatory for AWS OIDC Auth
+  contents: read
+
+jobs:
+  validate:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install flake8 pytest moto
+          pip install -r backend/requirements.txt
+
+      - name: Lint with flake8
+        run: flake8 backend --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Test with pytest
+        run: pytest backend
+
+  build-and-push:
+    name: Build & Push to ECR
+    needs: validate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.build-image.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_OIDC_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY_API: ${{ vars.ECR_REPOSITORY_API }}
+          ECR_REPOSITORY_WORKER: ${{ vars.ECR_REPOSITORY_WORKER }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build API
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY_API:latest backend
+          docker push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY_API
+          
+          # Build Worker
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_WORKER:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY_WORKER:latest backend -f backend/Dockerfile.worker
+          docker push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY_WORKER
+          
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy to AWS
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_OIDC_ROLE_ARN_PROD }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Connect to EKS
+        run: aws eks update-kubeconfig --region ${{ vars.AWS_REGION }} --name ${{ vars.EKS_CLUSTER_NAME }}
+
+      - name: Deploy API & Worker (EKS Rolling Update)
+        env:
+          ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          # Update Manifests dynamically
+          sed -i "s|API_IMAGE_PLACEHOLDER|$ECR_REGISTRY/${{ vars.ECR_REPOSITORY_API }}:$IMAGE_TAG|g" infra/k8s/base/api-deployment.yaml
+          sed -i "s|WORKER_IMAGE_PLACEHOLDER|$ECR_REGISTRY/${{ vars.ECR_REPOSITORY_WORKER }}:$IMAGE_TAG|g" infra/k8s/base/worker-deployment.yaml
+          
+          kubectl apply -f infra/k8s/base/
+          
+          # Verify Rollout & Rollback Strategy
+          kubectl rollout status deployment/fixmypaper-api -n fixmypaper || kubectl rollout undo deployment/fixmypaper-api -n fixmypaper
+          kubectl rollout status deployment/fixmypaper-worker -n fixmypaper || kubectl rollout undo deployment/fixmypaper-worker -n fixmypaper
+
+      - name: Deploy Fallback Lambda
+        run: |
+          cd lambda/fallback_parser
+          zip -r function.zip .
+          aws lambda update-function-code --function-name ${{ vars.FALLBACK_LAMBDA_NAME }} --zip-file fileb://function.zip

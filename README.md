@@ -1,99 +1,99 @@
-# FixMyPaper 📄✨
+# FixMyPaper 2.0 📄✨
 
-FixMyPaper is a production-grade research paper analysis tool. It automates the detection of common errors in academic papers using AI-powered PDF processing.
+FixMyPaper 2.0 is a **Staff-Level, FAANG-grade**, globally scalable, and event-driven research paper analysis platform built on AWS. 
 
----
-
-## 🚀 Quick Start (Docker)
-
-The easiest way to run the entire stack (API, Frontend, Worker, DB, and AI services) is via Docker Compose.
-
-1.  **Clone the repository** (if you haven't already).
-2.  **Start all services**:
-    ```bash
-    docker compose up --build
-    ```
-3.  **Access the applications**:
-    -   **Frontend**: [http://localhost:3000](http://localhost:3000)
-    -   **API Documentation**: [http://localhost:5001/docs](http://localhost:5001/docs)
+It has been engineered to move beyond simple API-Worker patterns into a high-availability, resilient ecosystem featuring hybrid state machine orchestration and durable messaging.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture: The "Resilio-Scale" Paradigm
 
--   **Frontend**: Next.js (React)
--   **Backend**: FastAPI (Python 3.11)
--   **Background Processing**: Celery + Redis
--   **Database**: PostgreSQL (Structured data & Job tracking)
--   **AI Services**: GROBID (PDF parsing)
--   **Storage**: AWS S3 (Scalable file storage)
-
----
-
-## 🛠️ Local Development (Manual)
-
-If you prefer to run services manually for debugging:
-
-### 1. Prerequisites
--   Python 3.9+
--   Node.js 18+
--   PostgreSQL & Redis running locally
-
-### 2. Backend Setup
-```bash
-# Install dependencies
-python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
-
-# Configure environment
-cp backend/.env.example backend/.env
-# Update backend/.env with your local DB/Redis strings
-
-# Run migrations
-cd backend
-alembic upgrade head
-
-# Start API
-python main.py
-```
-
-### 3. Worker Setup
-```bash
-source venv/bin/activate
-cd backend
-celery -A app.workers.tasks worker --loglevel=info
-```
-
-### 4. Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
+```mermaid
+graph TD
+    User((User)) -->|Upload| CF[CloudFront + WAF]
+    CF -->|Presigned URL| S3[(Amazon S3)]
+    S3 -->|Object Created| SFN[Step Functions Orchestrator]
+    
+    subgraph Orchestration
+        SFN -->|Standard| SFN_Std[Standard: Job Lifecycle]
+        SFN_Std -->|Express| SFN_Exp[Express: High-Freq Parse]
+    end
+    
+    subgraph Messaging
+        SFN_Std -->|Enqueue| SQS[Amazon SQS + DLQ]
+        SQS -->|Pull + Heartbeat| Worker[Fargate Worker]
+    end
+    
+    subgraph Compute
+        SFN_Exp -->|Parse| Grobid[Grobid on EKS]
+        SFN_Std -->|Circuit Breaker| Fallback[Lambda Fallback]
+    end
+    
+    subgraph State & Notify
+        Worker -->|Update| DDB[(Amazon DynamoDB)]
+        SFN_Exp -->|Update| DDB
+        DDB -->|Stream| AS[AppSync WebSockets]
+        AS -->|Push| User
+    end
+    
+    User -->|Auth| Cog[AWS Cognito]
 ```
 
 ---
 
-## 🗄️ Database Migrations
+## 🚀 Key "Staff-Plus" Features
 
-We use **Alembic** to manage database schema changes.
+### 1. Hybrid Orchestration (Standard & Express)
+We utilize a dual-workflow model. **Standard workflows** manage long-running job lifecycles and complex error handling, while **Express workflows** handle high-frequency, sub-second parsing tasks to minimize cost and latency.
 
--   **Apply migrations**: `alembic upgrade head`
--   **Create new migration**: `alembic revision --autogenerate -m "description"`
--   **Check status**: `alembic current`
+### 2. Durable Idempotency
+Implemented a hashing strategy `sha256(S3_ETag + user_id)` to ensure that duplicate uploads are detected in sub-milliseconds, preventing redundant processing costs for millions of users.
+
+### 3. Visibility Heartbeats
+Our workers implement dynamic visibility extension on SQS. For large research papers, the worker periodically "heartbeats" back to SQS, extending the visibility timeout to ensure the job isn't re-processed by another worker before completion.
+
+### 4. Circuit Breaker & Serverless Fallback
+If the primary Grobid engine (EKS) reaches a threshold of 5% error rate or >10s latency, the Step Functions orchestrator automatically trips the circuit breaker and routes traffic to a **PyMuPDF-based Lambda Fallback**, providing graceful degradation of service.
 
 ---
 
-## 🔍 Observability & Tracing
+## 🛠️ Production Stack
 
-FixMyPaper is built with production-grade monitoring in mind:
+- **Frontend**: Next.js 14+ (Vercel)
+- **Identity**: AWS Cognito (OIDC / JWT)
+- **Orchestration**: AWS Step Functions
+- **Messaging**: Amazon SQS (Visibility Heartbeats)
+- **Database**: Amazon DynamoDB (State) + Amazon RDS (Analytics)
+- **Compute**: Amazon EKS (Grobid) + Amazon Fargate (Workers) + AWS Lambda (Fallback)
+- **CI/CD**: GitHub Actions + AWS OIDC (Zero-Trust Pipeline)
 
--   **Correlation IDs**: Every request is assigned a unique `X-Correlation-ID`. This ID is tracked through the API and into background Celery workers, allowing for end-to-end tracing of a single user action.
--   **Structured Logging**: All logs are emitted in JSON format (`structlog`), including metadata like `job_id`, `correlation_id`, and `processing_time`.
--   **Latency Metrics**: Background jobs log their exact `processing_time` upon completion to help identify performance bottlenecks.
+---
+
+## ⚡ Quick Start: 2.0 Bootstrap
+
+To provision the production-grade 2.0 environment:
+
+1. **Configure AWS**: Ensure your local AWS profile is active.
+   ```bash
+   aws configure
+   ```
+2. **Bootstrap Infrastructure**:
+   ```bash
+   chmod +x infra/terraform/scripts/bootstrap.sh
+   ./infra/terraform/scripts/bootstrap.sh
+   ```
+3. **Deploy Code**: Push to `main` branch to trigger the OIDC Pipeline.
+
+---
+
+## 🌪️ Resilience Verification
+The platform includes an automated **Chaos Engineering Suite** located in `scripts/chaos_suite.sh`. This suite validates:
+- [x] Pod termination recovery
+- [x] DynamoDB throttling handling
+- [x] SQS backpressure & rate-limiting
+- [x] Poison pill (malformed PDF) capture via DLQ
 
 ---
 
 ## 📄 License
-
-MIT
+MIT © FixMyPaper Team

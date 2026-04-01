@@ -1,0 +1,107 @@
+{
+  "StartAt": "IdempotencyCheck",
+  "States": {
+    "IdempotencyCheck": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "${DYNAMODB_TABLE}",
+        "Key": {
+          "idempotency_key": { "S.$": "$.idempotency_key" }
+        }
+      },
+      "ResultPath": "$.idempotency_result",
+      "Next": "IsDuplicate"
+    },
+    "IsDuplicate": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.idempotency_result.Item",
+          "IsPresent": true,
+          "Next": "JobAlreadyExists"
+        }
+      ],
+      "Default": "InitializeJob"
+    },
+    "JobAlreadyExists": {
+      "Type": "Pass",
+      "Result": { "status": "duplicate_skipped" },
+      "End": true
+    },
+    "InitializeJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${DYNAMODB_TABLE}",
+        "Item": {
+          "job_id": { "S.$": "$.job_id" },
+          "user_id": { "S.$": "$.user_id" },
+          "status": { "S": "pending" },
+          "created_at": { "S.$": "$$.Execution.StartTime" }
+        }
+      },
+      "Next": "EnqueueTask"
+    },
+    "EnqueueTask": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage",
+      "Parameters": {
+        "QueueUrl": "${SQS_QUEUE_URL}",
+        "MessageBody": {
+          "job_id.$": "$.job_id",
+          "s3_key.$": "$.s3_key"
+        }
+      },
+      "Next": "CallParseExpress"
+    },
+    "CallParseExpress": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::states:startExecution.sync:2",
+      "Parameters": {
+        "StateMachineArn": "${EXPRESS_STATE_MACHINE_ARN}",
+        "Input": {
+          "job_id.$": "$.job_id",
+          "s3_key.$": "$.s3_key"
+        }
+      },
+      "ResultPath": "$.parse_result",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "HandleFallback"
+        }
+      ],
+      "Next": "Finalize"
+    },
+    "HandleFallback": {
+      "Type": "Task",
+      "Resource": "${LAMBDA_FALLBACK_ARN}",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Next": "Finalize"
+    },
+    "Finalize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${DYNAMODB_TABLE}",
+        "Key": {
+          "job_id": { "S.$": "$.job_id" }
+        },
+        "UpdateExpression": "SET completed_at = :now, status = :status",
+        "ExpressionAttributeValues": {
+          ":now": { "S.$": "$$.Execution.StartTime" },
+          ":status": { "S": "completed" }
+        }
+      },
+      "End": true
+    }
+  }
+}
