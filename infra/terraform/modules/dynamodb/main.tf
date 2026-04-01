@@ -38,3 +38,18 @@ resource "aws_dynamodb_table" "jobs" {
     Name = "${var.project_name}-jobs"
   }
 }
+
+resource "aws_dynamodb_table" "formats" {
+  name         = "${var.project_name}-formats"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "format_id"
+
+  attribute {
+    name = "format_id"
+    type = "S"
+  }
+
+  tags = {
+    Name = "${var.project_name}-formats"
+  }
+}

@@ -1,49 +1,84 @@
 import { NextResponse } from "next/server";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
+import { v4 as uuidv4 } from "uuid";
 
 export const runtime = "nodejs";
 
-/**
- * Proxies the multipart upload to Flask.
- * This avoids Next's rewrite proxy instability/timeouts during long PDF processing.
- */
+// AWS Configuration
+const config = {
+  region: process.env.AWS_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+};
+
+const s3Client = new S3Client(config);
+const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient(config));
+const sfnClient = new SFNClient(config);
+
 export async function POST(request) {
-  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-
-  // Parse multipart from the client.
-  const incoming = await request.formData();
-
-  const fd = new FormData();
-  const file = incoming.get("file");
-  if (file) {
-    // Ensure we proxy as a Blob/FiIe to keep the multipart structure intact.
-    const buf = await file.arrayBuffer();
-    const blob = new Blob([buf], { type: file.type || "application/pdf" });
-    fd.append("file", blob, file.name || "upload.pdf");
-  }
-
-  const formatId = incoming.get("format_id");
-  if (formatId) fd.append("format_id", formatId);
-
-  const controller = new AbortController();
-  const timeoutMs = 180000; // 3 minutes; adjust if your pipeline can take longer.
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const S3_BUCKET = process.env.S3_BUCKET_NAME;
+  const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE_JOBS;
+  const SFN_ARN = process.env.STEP_FUNCTION_ARN;
 
   try {
-    const backendRes = await fetch(`${API}/upload`, {
-      method: "POST",
-      body: fd,
-      signal: controller.signal,
-    });
+    const incoming = await request.formData();
+    const file = incoming.get("file");
+    const formatId = incoming.get("format_id");
 
-    // Return backend response as-is.
-    const contentType = backendRes.headers.get("content-type");
-    const body = await backendRes.arrayBuffer();
-    return new NextResponse(body, {
-      status: backendRes.status,
-      headers: contentType ? { "content-type": contentType } : undefined,
-    });
-  } finally {
-    clearTimeout(timeout);
+    if (!file) {
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    }
+
+    const jobId = uuidv4();
+    const userId = "anonymous"; // Replace with actual user context if using auth
+    const fileName = file.name || "upload.pdf";
+    const s3Key = `uploads/${jobId}_${fileName}`;
+
+    // 1. Upload to S3
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: s3Key,
+      Body: buffer,
+      ContentType: file.type || "application/pdf",
+    }));
+
+    // 2. Initialize Job in DynamoDB
+    await ddbClient.send(new PutCommand({
+      TableName: DYNAMODB_TABLE,
+      Item: {
+        job_id: jobId,
+        user_id: userId,
+        status: "pending",
+        filename: fileName,
+        s3_key: s3Key,
+        created_at: new Date().toISOString(),
+      },
+    }));
+
+    // 3. Trigger Step Function Workflow
+    await sfnClient.send(new StartExecutionCommand({
+      stateMachineArn: SFN_ARN,
+      input: JSON.stringify({
+        job_id: jobId,
+        user_id: userId,
+        s3_key: s3Key,
+      }),
+    }));
+
+    return NextResponse.json({ job_id: jobId, status: "pending" });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return NextResponse.json({ 
+      error: "Serverless upload failed", 
+      details: error.message 
+    }, { status: 500 });
   }
 }
-

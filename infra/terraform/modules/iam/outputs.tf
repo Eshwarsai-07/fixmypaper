@@ -17,3 +17,12 @@ output "eks_node_role_arn" {
 output "fargate_pod_execution_role_arn" {
   value = aws_iam_role.fargate_pod_execution.arn
 }
+
+output "frontend_access_key_id" {
+  value = aws_iam_access_key.frontend.id
+}
+
+output "frontend_secret_access_key" {
+  value     = aws_iam_access_key.frontend.secret
+  sensitive = true
+}

@@ -37,7 +37,9 @@ resource "aws_iam_policy" "api_policy" {
           "dynamodb:PutItem",
           "dynamodb:GetItem",
           "dynamodb:UpdateItem",
-          "dynamodb:Query"
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:DeleteItem"
         ]
         Resource = "*" # Should be specific table ARN
       },
@@ -197,4 +199,21 @@ resource "aws_iam_role_policy_attachment" "fargate_pod_execution_policy" {
 resource "aws_iam_role_policy_attachment" "fargate_cloudwatch_policy" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
   role       = aws_iam_role.fargate_pod_execution.name
+}
+
+# Frontend User (Vercel)
+resource "aws_iam_user" "frontend" {
+  name = "${var.project_name}-frontend-user"
+  tags = {
+    Name = "${var.project_name}-frontend-user"
+  }
+}
+
+resource "aws_iam_user_policy_attachment" "frontend_attach" {
+  user       = aws_iam_user.frontend.name
+  policy_arn = aws_iam_policy.api_policy.arn
+}
+
+resource "aws_iam_access_key" "frontend" {
+  user = aws_iam_user.frontend.name
 }

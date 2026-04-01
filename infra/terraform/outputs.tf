@@ -2,6 +2,15 @@ output "vpc_id" {
   value = module.vpc.vpc_id
 }
 
+output "frontend_access_key_id" {
+  value = module.iam.frontend_access_key_id
+}
+
+output "frontend_secret_access_key" {
+  value     = module.iam.frontend_secret_access_key
+  sensitive = true
+}
+
 output "eks_cluster_name" {
   value = module.eks.cluster_name
 }
