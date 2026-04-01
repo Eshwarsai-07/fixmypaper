@@ -1,99 +1,98 @@
-# FixMyPaper 2.0 📄✨
+# FixMyPaper 2.0: 100% AWS-Native Operations Guide 📄🚀
 
-FixMyPaper 2.0 is a **Staff-Level, FAANG-grade**, globally scalable, and event-driven research paper analysis platform built on AWS. 
-
-It has been engineered to move beyond simple API-Worker patterns into a high-availability, resilient ecosystem featuring hybrid state machine orchestration and durable messaging.
+Welcome to the **FixMyPaper 2.0** production repository. This system is a staff-level, 100% serverless, and event-driven research paper analysis platform. It is engineered for zero-maintenance, high-availability, and global scale.
 
 ---
 
-## 🏗️ Architecture: The "Resilio-Scale" Paradigm
+## 🏗️ 1. Architecture Overview (100% Serverless)
 
-```mermaid
-graph TD
-    User((User)) -->|Upload| CF[CloudFront + WAF]
-    CF -->|Presigned URL| S3[(Amazon S3)]
-    S3 -->|Object Created| SFN[Step Functions Orchestrator]
-    
-    subgraph Orchestration
-        SFN -->|Standard| SFN_Std[Standard: Job Lifecycle]
-        SFN_Std -->|Express| SFN_Exp[Express: High-Freq Parse]
-    end
-    
-    subgraph Messaging
-        SFN_Std -->|Enqueue| SQS[Amazon SQS + DLQ]
-        SQS -->|Pull + Heartbeat| Worker[Fargate Worker]
-    end
-    
-    subgraph Compute
-        SFN_Exp -->|Parse| Grobid[Grobid on EKS]
-        SFN_Std -->|Circuit Breaker| Fallback[Lambda Fallback]
-    end
-    
-    subgraph State & Notify
-        Worker -->|Update| DDB[(Amazon DynamoDB)]
-        SFN_Exp -->|Update| DDB
-        DDB -->|Stream| AS[AppSync WebSockets]
-        AS -->|Push| User
-    end
-    
-    User -->|Auth| Cog[AWS Cognito]
+The platform is split into two primary layers, both managed by **Terraform**.
+
+-   **Frontend**: Next.js 14 (App Router) hosted on **AWS Amplify Hosting**.
+-   **Backend**: 
+    -   **Storage**: Amazon S3 (PDF Uploads)
+    -   **State**: Amazon DynamoDB (Job Metadata & Formats)
+    -   **Orchestration**: AWS Step Functions (Standard & Express Hybrid)
+    -   **Compute**: Grobid Parser on **Amazon EKS Fargate** (Zero-EC2)
+    -   **Real-time**: AWS AppSync (WebSockets for progress updates)
+
+---
+
+## 🛠️ 2. Prerequisites for New Developers
+
+Before you begin, ensure you have the following installed and configured:
+
+1.  **AWS CLI**: Configured with an Administrator-level IAM user.
+    ```bash
+    aws configure
+    ```
+2.  **Terraform**: Version 1.5.0 or higher.
+3.  **GitHub Personal Access Token (PAT)**:
+    -   Required for AWS Amplify to pull the code.
+    -   Create a "Classic Token" with `repo` and `admin:repo_hook` scopes at [GitHub Settings](https://github.com/settings/tokens).
+
+---
+
+## 🚀 3. End-to-End Deployment (One-Click)
+
+To deploy the entire stack from scratch:
+
+### Step A: Prepare the Environment
+Ensure your GitHub PAT is available in your shell session:
+```bash
+export TF_VAR_github_access_token="your_ghp_token_here"
+```
+
+### Step B: Run the Infrastructure Script
+We provide a unified script that handles `terraform init`, `workspace select`, and `apply`.
+```bash
+chmod +x scripts/infra-up.sh
+./scripts/infra-up.sh
+```
+
+### Step C: What the Script Does
+1.  **Provisions Storage**: Creates the unique S3 bucket for PDFs.
+2.  **Sets up State**: Initializes DynamoDB tables (`fixmypaper-jobs`).
+3.  **Deploys Compute**: Sets up the EKS Cluster and the Fargate Profile for the Grobid parser.
+4.  **Bridges Frontend**: Connects your GitHub repo to **AWS Amplify** and injects all backend ARNs as environment variables.
+
+---
+
+## 🔑 4. Environment Variables & Secrets
+
+The system is designed to be **Zero-Configuration** for the frontend. Terraform automatically injects these into AWS Amplify:
+
+| Variable Name | Source/Location | Purpose |
+| :--- | :--- | :--- |
+| `APP_AWS_REGION` | Terraform `var.aws_region` | Deployment region (us-east-1) |
+| `APP_AWS_ACCESS_KEY_ID` | IAM User `frontend` | Secure bridge to backend |
+| `APP_AWS_SECRET_ACCESS_KEY` | IAM User `frontend` | Secure bridge to backend |
+| `S3_BUCKET_NAME` | S3 Module Output | Where PDFs are stored |
+| `DYNAMODB_TABLE_JOBS` | DynamoDB Module Output | Where analysis results live |
+| `STEP_FUNCTION_ARN` | Step Function Output | The "Brain" of the analysis |
+
+> [!WARNING]
+> **Reserved Prefixes**: AWS Amplify restricts variables starting with `AWS_`. We use the **`APP_AWS_`** prefix to bypass this and ensure the Next.js SDK can still authenticate.
+
+---
+
+## 📡 5. Verification & Monitoring
+
+Once deployment is complete (`infra-up.sh` finishes):
+
+1.  **Amplify URL**: The script will output a URL like `https://main.d123z.amplifyapp.com`.
+2.  **Dashboard**: Visit the **AWS Console > Amplify > fixmypaper-gui** to watch the build logs.
+3.  **Grobid Status**: Run `kubectl get pods` to ensure the Grobid parser is running on Fargate.
+4.  **Logs**: All logs are centralized in **AWS CloudWatch** under the `/aws/vendedlogs/states/` and `/aws/lambda/` namespaces.
+
+---
+
+## 🧹 6. Decommissioning (Tear Down)
+To completely delete all AWS resources and stop billing:
+```bash
+./scripts/infra-down.sh
 ```
 
 ---
-
-## 🚀 Key "Staff-Plus" Features
-
-### 1. Hybrid Orchestration (Standard & Express)
-We utilize a dual-workflow model. **Standard workflows** manage long-running job lifecycles and complex error handling, while **Express workflows** handle high-frequency, sub-second parsing tasks to minimize cost and latency.
-
-### 2. Durable Idempotency
-Implemented a hashing strategy `sha256(S3_ETag + user_id)` to ensure that duplicate uploads are detected in sub-milliseconds, preventing redundant processing costs for millions of users.
-
-### 3. Visibility Heartbeats
-Our workers implement dynamic visibility extension on SQS. For large research papers, the worker periodically "heartbeats" back to SQS, extending the visibility timeout to ensure the job isn't re-processed by another worker before completion.
-
-### 4. Circuit Breaker & Serverless Fallback
-If the primary Grobid engine (EKS) reaches a threshold of 5% error rate or >10s latency, the Step Functions orchestrator automatically trips the circuit breaker and routes traffic to a **PyMuPDF-based Lambda Fallback**, providing graceful degradation of service.
-
----
-
-## 🛠️ Production Stack
-
-- **Frontend**: Next.js 14+ (Vercel)
-- **Identity**: AWS Cognito (OIDC / JWT)
-- **Orchestration**: AWS Step Functions
-- **Messaging**: Amazon SQS (Visibility Heartbeats)
-- **Database**: Amazon DynamoDB (State) + Amazon RDS (Analytics)
-- **Compute**: Amazon EKS (Grobid) + Amazon Fargate (Workers) + AWS Lambda (Fallback)
-- **CI/CD**: GitHub Actions + AWS OIDC (Zero-Trust Pipeline)
-
----
-
-## ⚡ Quick Start: 2.0 Bootstrap
-
-To provision the production-grade 2.0 environment:
-
-1. **Configure AWS**: Ensure your local AWS profile is active.
-   ```bash
-   aws configure
-   ```
-2. **Bootstrap Infrastructure**:
-   ```bash
-   chmod +x infra/terraform/scripts/bootstrap.sh
-   ./infra/terraform/scripts/bootstrap.sh
-   ```
-3. **Deploy Code**: Push to `main` branch to trigger the OIDC Pipeline.
-
----
-
-## 🌪️ Resilience Verification
-The platform includes an automated **Chaos Engineering Suite** located in `scripts/chaos_suite.sh`. This suite validates:
-- [x] Pod termination recovery
-- [x] DynamoDB throttling handling
-- [x] SQS backpressure & rate-limiting
-- [x] Poison pill (malformed PDF) capture via DLQ
-
----
-
-## 📄 License
-MIT © FixMyPaper Team
+**Maintained by**: FixMyPaper DevOps Team
+**Stack Version**: 2.0 (Amplify + Serverless EKS)

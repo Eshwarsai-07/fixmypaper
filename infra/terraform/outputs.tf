@@ -2,6 +2,10 @@ output "vpc_id" {
   value = module.vpc.vpc_id
 }
 
+output "amplify_app_id" {
+  value = module.amplify.amplify_app_id
+}
+
 output "amplify_url" {
   value = module.amplify.amplify_app_url
 }

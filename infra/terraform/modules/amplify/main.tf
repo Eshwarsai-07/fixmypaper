@@ -5,7 +5,7 @@ resource "aws_amplify_app" "frontend" {
   # GitHub Personal Access Token (PAT)
   access_token = var.github_access_token
 
-  # Build settings (Standard Next.js 14)
+  # Build settings (Standard Next.js 14 SSR)
   build_spec = <<-EOT
     version: 1
     frontend:
@@ -16,13 +16,10 @@ resource "aws_amplify_app" "frontend" {
         build:
           commands:
             - npm run build
-      artifacts:
-        baseDirectory: .next
-        files:
-          - '**/*'
       cache:
         paths:
           - node_modules/**/*
+          - .next/cache/**/*
   EOT
 
   # Environment Variables (Connecting to Backend)
@@ -42,12 +39,6 @@ resource "aws_amplify_app" "frontend" {
   }
 
   platform = "WEB_COMPUTE" # Required for Next.js SSR/App Router
-
-  custom_rule {
-    source = "/<*>"
-    status = "404"
-    target = "/index.html"
-  }
 
   tags = {
     Name = "${var.project_name}-amplify-app"
