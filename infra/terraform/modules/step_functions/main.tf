@@ -43,7 +43,10 @@ resource "aws_iam_policy" "sfn_policy" {
         Action = [
           "lambda:InvokeFunction"
         ]
-        Resource = aws_lambda_function.fallback.arn
+        Resource = [
+          aws_lambda_function.fallback.arn,
+          aws_lambda_function.primary.arn
+        ]
       },
       {
         Effect = "Allow"
@@ -69,7 +72,7 @@ resource "aws_sfn_state_machine" "express" {
   type     = "EXPRESS"
 
   definition = templatefile("${path.module}/express_definition.json", {
-    API_WORKER_URL = var.api_worker_url
+    PRIMARY_LAMBDA_ARN = aws_lambda_function.primary.arn
   })
 }
 

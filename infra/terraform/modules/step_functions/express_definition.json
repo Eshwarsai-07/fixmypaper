@@ -3,7 +3,7 @@
   "States": {
     "ProcessTask": {
       "Type": "Task",
-      "Resource": "${API_WORKER_URL}",
+      "Resource": "${PRIMARY_LAMBDA_ARN}",
       "Retry": [
         {
           "ErrorEquals": ["States.ALL"],

@@ -16,23 +16,6 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
-variable "db_name" {
-  description = "RDS database name"
-  type        = string
-  default     = "fixmypaper"
-}
-
-variable "db_user" {
-  description = "RDS database user"
-  type        = string
-  default     = "postgres"
-}
-
-variable "db_password" {
-  description = "RDS database password"
-  type        = string
-  sensitive   = true
-}
 
 variable "s3_bucket_name" {
   description = "S3 bucket for uploads"

@@ -4,6 +4,12 @@ data "archive_file" "fallback_zip" {
   output_path = "${path.module}/fallback_parser.zip"
 }
 
+data "archive_file" "primary_zip" {
+  type        = "zip"
+  source_file = "${path.module}/../../../../lambda/primary_parser/main.py"
+  output_path = "${path.module}/primary_parser.zip"
+}
+
 resource "aws_iam_role" "lambda_fallback_role" {
   name = "${var.project_name}-lambda-fallback-role"
 
@@ -70,6 +76,21 @@ resource "aws_lambda_function" "fallback" {
     variables = {
       S3_BUCKET_NAME = var.s3_bucket_name
       DYNAMODB_TABLE = var.dynamodb_table_name
+    }
+  }
+}
+
+resource "aws_lambda_function" "primary" {
+  filename         = data.archive_file.primary_zip.output_path
+  function_name    = "${var.project_name}-primary-parser"
+  role             = aws_iam_role.lambda_fallback_role.arn # Reuse fallback role with S3/DDB access
+  handler          = "main.lambda_handler"
+  runtime          = "python3.11"
+  source_code_hash = data.archive_file.primary_zip.output_base64sha256
+
+  environment {
+    variables = {
+      API_WORKER_URL = var.api_worker_url
     }
   }
 }

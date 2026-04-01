@@ -31,16 +31,6 @@ module "eks" {
   node_role_arn = module.iam.eks_node_role_arn
 }
 
-module "rds" {
-  source       = "./modules/rds"
-  project_name = var.project_name
-  db_name      = var.db_name
-  db_user      = var.db_user
-  db_password  = var.db_password
-  vpc_id       = module.vpc.vpc_id
-  subnet_ids   = module.vpc.private_subnet_ids
-  vpc_sg_id    = module.vpc.default_sg_id
-}
 
 module "s3" {
   source       = "./modules/s3"
