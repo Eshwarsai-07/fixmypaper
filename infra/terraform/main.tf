@@ -89,3 +89,22 @@ module "monitoring" {
   sfn_arn               = module.step_functions.standard_sfn_arn
   aws_region            = var.aws_region
 }
+
+module "amplify" {
+  source       = "./modules/amplify"
+  project_name = var.project_name
+  aws_region   = var.aws_region
+
+  # GitHub Connection
+  github_access_token = var.github_access_token
+
+  # Backend Context
+  s3_bucket_name         = module.s3.bucket_name
+  dynamodb_table_jobs    = module.dynamodb.table_name
+  dynamodb_table_formats = "${var.project_name}-formats"
+  step_function_arn      = module.step_functions.standard_sfn_arn
+
+  # Security Credentials
+  frontend_access_key_id     = module.iam.frontend_access_key_id
+  frontend_secret_access_key = module.iam.frontend_secret_access_key
+}

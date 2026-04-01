@@ -32,3 +32,9 @@ variable "sqs_backlog_threshold" {
   type        = number
   default     = 100
 }
+
+variable "github_access_token" {
+  description = "GitHub Personal Access Token (PAT) for AWS Amplify"
+  type        = string
+  sensitive   = true
+}
