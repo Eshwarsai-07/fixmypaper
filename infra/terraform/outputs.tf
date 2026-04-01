@@ -11,6 +11,15 @@ output "frontend_secret_access_key" {
   sensitive = true
 }
 
+output "github_actions_access_key_id" {
+  value = module.iam.github_actions_access_key_id
+}
+
+output "github_actions_secret_access_key" {
+  value     = module.iam.github_actions_secret_access_key
+  sensitive = true
+}
+
 output "eks_cluster_name" {
   value = module.eks.cluster_name
 }

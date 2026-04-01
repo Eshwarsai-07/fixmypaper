@@ -217,3 +217,35 @@ resource "aws_iam_user_policy_attachment" "frontend_attach" {
 resource "aws_iam_access_key" "frontend" {
   user = aws_iam_user.frontend.name
 }
+
+# GitHub Actions Deployer (CI/CD)
+resource "aws_iam_user" "github_actions" {
+  name = "${var.project_name}-github-actions-user"
+  tags = {
+    Name = "${var.project_name}-github-actions-user"
+  }
+}
+
+resource "aws_iam_user_policy" "github_actions_eks" {
+  name = "${var.project_name}-github-actions-eks-policy"
+  user = aws_iam_user.github_actions.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:AccessKubernetesApi"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_access_key" "github_actions" {
+  user = aws_iam_user.github_actions.name
+}
