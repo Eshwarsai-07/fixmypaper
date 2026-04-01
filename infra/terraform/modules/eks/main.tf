@@ -7,21 +7,28 @@ resource "aws_eks_cluster" "main" {
   }
 }
 
-resource "aws_eks_node_group" "main" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "${var.project_name}-node-group"
-  node_role_arn   = var.node_role_arn
-  subnet_ids      = var.subnet_ids
+resource "aws_eks_fargate_profile" "main" {
+  cluster_name           = aws_eks_cluster.main.name
+  fargate_profile_name   = "fixmypaper-fargate-profile"
+  pod_execution_role_arn = var.fargate_pod_execution_role_arn
+  subnet_ids             = var.subnet_ids
 
-  scaling_config {
-    desired_size = 2
-    max_size     = 5
-    min_size     = 2
+  selector {
+    namespace = "default"
   }
 
-  instance_types = ["t3.medium"]
+  selector {
+    namespace = "kube-system"
+  }
+}
 
-  depends_on = [
-    aws_eks_cluster.main
-  ]
+data "tls_certificate" "eks" {
+  url = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
+# OIDC Provider for EKS (IRSA)
+resource "aws_iam_openid_connect_provider" "eks" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
+  url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }

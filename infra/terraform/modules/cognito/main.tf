@@ -9,7 +9,7 @@ resource "aws_cognito_user_pool" "main" {
     require_uppercase = true
   }
 
-  mfa_configuration = "OPTIONAL"
+  mfa_configuration = "OFF"
 
   admin_create_user_config {
     allow_admin_create_user_only = false

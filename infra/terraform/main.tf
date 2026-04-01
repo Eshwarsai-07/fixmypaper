@@ -23,12 +23,13 @@ module "iam" {
 }
 
 module "eks" {
-  source        = "./modules/eks"
-  project_name  = var.project_name
-  cluster_name  = "${var.project_name}-eks"
-  subnet_ids    = module.vpc.private_subnet_ids
-  eks_role_arn  = module.iam.eks_cluster_role_arn
-  node_role_arn = module.iam.eks_node_role_arn
+  source                        = "./modules/eks"
+  project_name                  = var.project_name
+  cluster_name                  = "${var.project_name}-eks"
+  subnet_ids                    = module.vpc.private_subnet_ids
+  eks_role_arn                  = module.iam.eks_cluster_role_arn
+  node_role_arn                 = module.iam.eks_node_role_arn
+  fargate_pod_execution_role_arn = module.iam.fargate_pod_execution_role_arn
 }
 
 
@@ -76,6 +77,8 @@ module "step_functions" {
   sqs_queue_url       = module.sqs.queue_url
   s3_bucket_name      = var.s3_bucket_name
   api_worker_url      = var.api_worker_url
+  subnet_ids          = module.vpc.private_subnet_ids
+  security_group_id   = module.vpc.default_sg_id
 }
 
 module "monitoring" {

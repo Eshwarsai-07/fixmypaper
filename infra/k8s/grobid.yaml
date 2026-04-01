@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grobid
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grobid
+  template:
+    metadata:
+      labels:
+        app: grobid
+    spec:
+      containers:
+      - name: grobid
+        image: grobid/grobid:0.8.0
+        ports:
+        - containerPort: 8070
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+            ephemeral-storage: "50Gi"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+            ephemeral-storage: "50Gi"
+        # Fargate supports ephemeral-storage requests up to 200Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grobid
+  namespace: default
+spec:
+  selector:
+    app: grobid
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8070
+  type: ClusterIP

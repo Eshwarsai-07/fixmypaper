@@ -22,3 +22,8 @@ variable "node_role_arn" {
   description = "EKS node role arn"
   type        = string
 }
+
+variable "fargate_pod_execution_role_arn" {
+  description = "EKS fargate pod execution role arn"
+  type        = string
+}

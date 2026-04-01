@@ -56,6 +56,15 @@ resource "aws_iam_policy" "sfn_policy" {
           "states:StopExecution"
         ]
         Resource = "*" # Should be scoped to the Express ARN
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "events:PutRule",
+          "events:PutTargets",
+          "events:DescribeRule"
+        ]
+        Resource = "*"
       }
     ]
   })

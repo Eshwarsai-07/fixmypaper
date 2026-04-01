@@ -13,3 +13,7 @@ output "eks_cluster_role_arn" {
 output "eks_node_role_arn" {
   value = aws_iam_role.eks_nodes.arn
 }
+
+output "fargate_pod_execution_role_arn" {
+  value = aws_iam_role.fargate_pod_execution.arn
+}

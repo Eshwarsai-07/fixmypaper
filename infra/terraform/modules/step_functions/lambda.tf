@@ -54,6 +54,15 @@ resource "aws_iam_policy" "lambda_fallback_policy" {
           "logs:PutLogEvents"
         ]
         Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -87,6 +96,11 @@ resource "aws_lambda_function" "primary" {
   handler          = "main.lambda_handler"
   runtime          = "python3.11"
   source_code_hash = data.archive_file.primary_zip.output_base64sha256
+
+  vpc_config {
+    subnet_ids         = var.subnet_ids
+    security_group_ids = [var.security_group_id]
+  }
 
   environment {
     variables = {

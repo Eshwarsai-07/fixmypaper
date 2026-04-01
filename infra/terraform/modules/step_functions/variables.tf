@@ -19,6 +19,16 @@ variable "s3_bucket_name" {
 }
 
 variable "api_worker_url" {
-  description = "API worker URL (or ARN) for Express workflow"
+  description = "The internal URL for the Grobid worker"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "VPC private subnet ids"
+  type        = list(string)
+}
+
+variable "security_group_id" {
+  description = "Security group for Lambda"
   type        = string
 }

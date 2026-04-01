@@ -5,10 +5,8 @@ on:
     branches: [ "main", "production" ]
 
 env:
-  AWS_REGION: us-east-1                   # set this to your preferred AWS region, e.g. us-west-1
-  ECR_REPOSITORY_BACKEND: fixmypaper-backend     # set this to your Amazon ECR repository name
-  ECR_REPOSITORY_FRONTEND: fixmypaper-frontend    # set this to your Amazon ECR repository name
-  EKS_CLUSTER_NAME: fixmypaper-eks        # set this to your Amazon EKS cluster name
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: fixmypaper-eks
 
 jobs:
   deploy:
@@ -27,43 +25,11 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-
-    - name: Build, tag, and push backend image to Amazon ECR
-      id: build-backend
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG -f backend/Dockerfile .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
-
-    - name: Build, tag, and push frontend image to Amazon ECR
-      id: build-frontend
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG -f frontend/Dockerfile .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
-
     - name: Update Kubeconfig
       run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-    - name: Deploy to EKS
+    - name: Deploy Grobid to EKS (Fargate)
       run: |
-        kubectl apply -f infra/k8s/
-        kubectl rollout restart deployment/fixmypaper-api -n fixmypaper
-        kubectl rollout restart deployment/fixmypaper-worker -n fixmypaper
-        kubectl rollout restart deployment/fixmypaper-frontend -n fixmypaper
-
-    - name: Run Database Migrations
-      run: |
-        # Run alembic in a temporary k8s pod or via the deployed API pod
-        kubectl exec -n fixmypaper deploy/fixmypaper-api -- alembic upgrade head
+        kubectl apply -f infra/k8s/grobid.yaml
+        echo "Deployment complete. Monitoring rollout..."
+        kubectl rollout status deployment/grobid -n default
