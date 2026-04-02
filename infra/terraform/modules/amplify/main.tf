@@ -5,27 +5,24 @@ resource "aws_amplify_app" "frontend" {
   # GitHub Personal Access Token (PAT)
   access_token = var.github_access_token
 
-  # Build settings (Standard Next.js 14 SSR)
   build_spec = <<-EOT
     version: 1
-    applications:
-      - appRoot: frontend
-        frontend:
-          phases:
-            preBuild:
-              commands:
-                - npm ci
-            build:
-              commands:
-                - npm run build
-          artifacts:
-            baseDirectory: .next
-            files:
-              - '**/*'
-          cache:
-            paths:
-              - node_modules/**/*
-              - .next/cache/**/*
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
   EOT
 
   # Environment Variables (Connecting to Backend)
