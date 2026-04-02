@@ -8,18 +8,24 @@ resource "aws_amplify_app" "frontend" {
   # Build settings (Standard Next.js 14 SSR)
   build_spec = <<-EOT
     version: 1
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - npm ci
-        build:
-          commands:
-            - npm run build
-      cache:
-        paths:
-          - node_modules/**/*
-          - .next/cache/**/*
+    applications:
+      - appRoot: frontend
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: .next
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+              - .next/cache/**/*
   EOT
 
   # Environment Variables (Connecting to Backend)
