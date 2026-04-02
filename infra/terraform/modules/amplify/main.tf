@@ -7,22 +7,24 @@ resource "aws_amplify_app" "frontend" {
 
   build_spec = <<-EOT
     version: 1
-    phases:
-      preBuild:
-        commands:
-          - npm ci
-          - env | grep -e APP_AWS -e S3_ -e DYNAMODB_ -e NEXT_ -e STEP_FUNCTION >> .env.production
-      build:
-        commands:
-          - npm run build
-    artifacts:
-      baseDirectory: .next
-      files:
-        - '**/*'
-    cache:
-      paths:
-        - node_modules/**/*
-        - .next/cache/**/*
+    applications:
+      - appRoot: frontend
+        phases:
+          preBuild:
+            commands:
+              - npm ci
+              - env | grep -e APP_AWS -e S3_ -e DYNAMODB_ -e NEXT_ -e STEP_FUNCTION >> .env.production
+          build:
+            commands:
+              - npm run build
+        artifacts:
+          baseDirectory: .next
+          files:
+            - '**/*'
+        cache:
+          paths:
+            - node_modules/**/*
+            - .next/cache/**/*
   EOT
 
   # Environment Variables (Connecting to Backend)
