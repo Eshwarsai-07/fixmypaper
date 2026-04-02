@@ -12,6 +12,7 @@ resource "aws_amplify_app" "frontend" {
         preBuild:
           commands:
             - npm ci
+            - env | grep -e APP_AWS -e S3_ -e DYNAMODB_ -e NEXT_ -e STEP_FUNCTION >> .env.production
         build:
           commands:
             - npm run build
