@@ -4,7 +4,6 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 import { v4 as uuidv4 } from "uuid";
-
 export const runtime = "nodejs";
 
 // AWS Configuration
@@ -25,6 +24,10 @@ export async function POST(request) {
   const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE_JOBS;
   const SFN_ARN = process.env.STEP_FUNCTION_ARN;
 
+  if (!S3_BUCKET || !DYNAMODB_TABLE) {
+    return NextResponse.json({ error: "Missing AWS Configuration. Check S3_BUCKET_NAME and DYNAMODB_TABLE_JOBS in your .env" }, { status: 500 });
+  }
+
   try {
     const incoming = await request.formData();
     const file = incoming.get("file");
@@ -39,9 +42,26 @@ export async function POST(request) {
     const fileName = file.name || "upload.pdf";
     const s3Key = `uploads/${jobId}_${fileName}`;
 
-    // 1. Upload to S3
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // 0. PDF Validation Layer (Strict Edge Security)
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+    if (buffer.length > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File exceeds 20MB limit." }, { status: 400 });
+    }
+
+    // Genuine PDFs must begin with the %PDF- magic bytes signature
+    if (buffer.length < 5 || buffer.toString("utf-8", 0, 5) !== "%PDF-") {
+      return NextResponse.json({ error: "Invalid file format. Genuine PDF required." }, { status: 400 });
+    }
+
+    // The heavy text parsing is delegated to the robust Python Lambdas 
+    // to avoid Next.js Webpack and memory crashes.
+    let validationStatus = "valid";
+
+    // 1. Upload to S3
 
     await s3Client.send(new PutObjectCommand({
       Bucket: S3_BUCKET,
@@ -57,6 +77,7 @@ export async function POST(request) {
         job_id: jobId,
         user_id: userId,
         status: "pending",
+        validation_status: validationStatus,
         filename: fileName,
         s3_key: s3Key,
         created_at: new Date().toISOString(),
@@ -70,10 +91,15 @@ export async function POST(request) {
         job_id: jobId,
         user_id: userId,
         s3_key: s3Key,
+        skip_complex_modules: validationStatus === "warning"
       }),
     }));
 
-    return NextResponse.json({ job_id: jobId, status: "pending" });
+    return NextResponse.json({ 
+      job_id: jobId, 
+      status: "pending",
+      validation_status: validationStatus
+    });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ 

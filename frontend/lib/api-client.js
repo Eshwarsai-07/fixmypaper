@@ -3,7 +3,7 @@
  * Handles base URLs, global error catching, and timeouts.
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 class ApiError extends Error {
   constructor(message, status, data) {

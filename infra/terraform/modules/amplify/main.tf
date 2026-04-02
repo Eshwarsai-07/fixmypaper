@@ -36,6 +36,9 @@ resource "aws_amplify_app" "frontend" {
     
     # Public Settings
     NEXT_PUBLIC_API_URL        = "/api"
+    
+    # Environment Hints
+    _NODE_VERSION_HINT         = "20"
   }
 
   platform = "WEB_COMPUTE" # Required for Next.js SSR/App Router
