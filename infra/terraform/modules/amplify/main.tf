@@ -45,6 +45,7 @@ resource "aws_amplify_app" "frontend" {
     
     # Environment Hints
     _NODE_VERSION_HINT         = "20"
+    AMPLIFY_MONOREPO_APP_ROOT  = "frontend"
   }
 
   platform = "WEB_COMPUTE" # Required for Next.js SSR/App Router
