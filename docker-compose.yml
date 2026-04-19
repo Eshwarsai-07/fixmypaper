@@ -1,4 +1,11 @@
 services:
+  grobid:
+    image: lfoppiano/grobid:0.8.1
+    container_name: fixmypaper-grobid
+    ports:
+      - "8070:8070"
+    restart: always
+
   backend:
     build:
       context: .
@@ -9,6 +16,11 @@ services:
     environment:
       PORT: "7860"
       REFERENCE_API_URL: ${REFERENCE_API_URL}
+      GROBID_URL: ${GROBID_URL}
+      GROBID_TIMEOUT_SECONDS: ${GROBID_TIMEOUT_SECONDS}
+      GROBID_CITATION_TIMEOUT_SECONDS: ${GROBID_CITATION_TIMEOUT_SECONDS}
+    depends_on:
+      - grobid
     healthcheck:
       test:
         [

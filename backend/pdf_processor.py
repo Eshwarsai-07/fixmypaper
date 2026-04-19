@@ -25,7 +25,10 @@ import urllib.parse
 from collections import OrderedDict
 from typing import List, Dict, Tuple, Optional, Set
 from dataclasses import dataclass, field
+import logging
 from lxml import etree
+
+logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # FORMAT CONFIGURATION CONSTANTS
 # Used by the Streamlit professor/student UI to build and apply formats.
@@ -227,7 +230,9 @@ class ErrorInstance:
 class PDFErrorDetector:
     """Detects IEEE formatting compliance issues in research papers."""
 
-    GROBID_URL = "https://ashjin-grobid-local-2.hf.space/"
+    GROBID_URL = os.environ.get("GROBID_URL", "http://grobid:8070").rstrip("/")
+    GROBID_TIMEOUT_SECONDS = int(os.environ.get("GROBID_TIMEOUT_SECONDS", "90"))
+    GROBID_CITATION_TIMEOUT_SECONDS = int(os.environ.get("GROBID_CITATION_TIMEOUT_SECONDS", "120"))
 
     def __init__(self, start_page: int = 1):
         self.start_page_0 = max(0, start_page - 1)  # convert 1-indexed to 0-indexed
@@ -327,19 +332,31 @@ class PDFErrorDetector:
         sentences = root.findall(".//tei:s", ns)
 
         if not sentences:
-            print("[GROBID] No <s> tags — falling back to paragraphs")
-            
+            logger.warning("[GROBID] No <s> tags found; falling back to paragraph-level extraction")
             paragraphs = root.findall(".//tei:p", ns)
-            sentences = []
+            for paragraph in paragraphs:
+                line_text = " ".join("".join(paragraph.itertext()).split()).strip()
+                if not line_text:
+                    continue
 
-            for p in paragraphs:
-                text = "".join(p.itertext()).strip()
-                if text:
-                    sentences.extend(
-                        re.split(r'(?<=[.!?])\s+', text)
-                    )
+                coords_str = paragraph.get("coords", "")
+                page_num, bbox = self._parse_grobid_coords([coords_str] if coords_str else [], fallback_page=0)
+                page_num = min(page_num, num_pages - 1)
 
-        for sent in sentence_elements:
+                if page_num < self.start_page_0:
+                    continue
+
+                self.line_info.append((line_text, bbox, page_num))
+                self.line_offsets.append(current_offset)
+                self.full_text += line_text + "\n"
+                current_offset += len(line_text) + 1
+                page_text_lists[page_num].append(line_text)
+
+            self.page_texts = ["\n".join(lines) for lines in page_text_lists]
+            logger.info("[TEXT EXTRACT] GROBID paragraph fallback produced %s lines", len(self.line_info))
+            return
+
+        for sent in sentences:
             # Each sentence becomes one logical "line" in line_info.
             words = []
             coords_list = []
@@ -374,8 +391,11 @@ class PDFErrorDetector:
             page_text_lists[page_num].append(line_text)
 
         self.page_texts = ["\n".join(lines) for lines in page_text_lists]
-        print(f"[TEXT EXTRACT] GROBID: {len(self.line_info)} logical lines across "
-              f"{num_pages} pages.")
+        logger.info(
+            "[TEXT EXTRACT] GROBID produced %s logical lines across %s pages",
+            len(self.line_info),
+            num_pages,
+        )
 
     def _parse_grobid_coords(
         self,
@@ -611,24 +631,49 @@ class PDFErrorDetector:
         All of these feed the compliance checks, replacing heuristic approaches.
         """
         try:
-            print("[GROBID] Processing PDF with GROBID...")
+            logger.info("[GROBID] Sending request to %s", self.GROBID_URL)
             with open(pdf_path, "rb") as pdf_file:
-                response = requests.post(
-                    f"{self.GROBID_URL}/api/processFulltextDocument",
-                    files={"input": pdf_file},
-                    timeout=60,
-                    data={
-                        "teiCoordinates": "true",
-                        "segmentSentences": "true",
-                        "consolidateHeader": "1",
-                        "consolidateCitations": "1",
-                    },
-                )
+                try:
+                    response = requests.post(
+                        f"{self.GROBID_URL}/api/processFulltextDocument",
+                        files={"input": pdf_file},
+                        timeout=self.GROBID_TIMEOUT_SECONDS,
+                        data={
+                            "teiCoordinates": "true",
+                            "segmentSentences": "true",
+                            "consolidateHeader": "1",
+                            "consolidateCitations": "1",
+                        },
+                    )
+                except requests.exceptions.Timeout:
+                    logger.error(
+                        "[GROBID] Timeout (%ss) calling %s",
+                        self.GROBID_TIMEOUT_SECONDS,
+                        self.GROBID_URL,
+                    )
+                    self._tei_root = None
+                    return
+                except requests.exceptions.ConnectionError as e:
+                    logger.error(f"[GROBID] Error: Connection failed. Check network/URL. Detail: {e}")
+                    self._tei_root = None
+                    return
+                except Exception as e:
+                    logger.error(f"[GROBID] Unexpected Error: {e}")
+                    self._tei_root = None
+                    return
 
-            if response.status_code != 200:
-                print(f"[GROBID] Error: status code {response.status_code}")
+            if response.status_code == 204:
+                logger.warning("[GROBID] Fulltext extraction returned 204 No Content")
                 self._tei_root = None
                 return
+
+            if response.status_code != 200:
+                logger.error("[GROBID] Error: status code %s", response.status_code)
+                logger.error("[GROBID] Response snippet: %s", response.text[:200])
+                self._tei_root = None
+                return
+            
+            logger.info("[GROBID] Success: 200 OK")
 
             tei_xml = response.content
 
@@ -906,11 +951,15 @@ class PDFErrorDetector:
                 response = requests.post(
                     f"{self.GROBID_URL}/api/processReferences",
                     files={"input": f},
-                    timeout=60,
+                    timeout=self.GROBID_CITATION_TIMEOUT_SECONDS,
                 )
 
+            if response.status_code == 204:
+                logger.info("[GROBID CITATIONS] No references extracted (204 No Content)")
+                return citations
+
             if response.status_code != 200:
-                print(f"[GROBID CITATIONS] Error: status {response.status_code}")
+                logger.warning("[GROBID CITATIONS] Non-200 status: %s", response.status_code)
                 return citations
 
             root = etree.fromstring(response.content)
@@ -959,10 +1008,14 @@ class PDFErrorDetector:
                 if raw_text:
                     citations.append({"raw_text": raw_text})
 
-            print(f"[GROBID CITATIONS] Extracted {len(citations)} references")
+            logger.info("[GROBID CITATIONS] Extracted %s references", len(citations))
 
         except requests.exceptions.Timeout:
-            print("[GROBID CITATIONS] Timeout — GROBID service took too long")
+            logger.warning(
+                "[GROBID CITATIONS] Timeout (%ss) waiting for %s",
+                self.GROBID_CITATION_TIMEOUT_SECONDS,
+                self.GROBID_URL,
+            )
         except requests.exceptions.ConnectionError:
             print("[GROBID CITATIONS] Connection error — GROBID not available")
         except Exception as e:
@@ -2689,30 +2742,16 @@ def process_pdf(
     enabled_check_types: Optional[Set[str]] = None,
     start_page: int = 1,
 ) -> Tuple[List[ErrorInstance], str, Dict, Dict, Dict]:
-    """
-    Full pipeline: open PDF → detect errors → annotate → save.
+    """Compatibility wrapper around the structured validation pipeline."""
+    from backend.pipeline import run_validation_pipeline
+    from backend.reporting import to_legacy_error_instances
 
-    Args:
-        input_path          – path to the source PDF
-        output_path         – path where the annotated PDF is written
-        required_sections   – sections that must exist (format-driven)
-        enabled_check_types – set of error_type strings to keep; None = keep all
-        start_page          – 1-indexed page to begin processing from (skips earlier pages)
-
-    Returns:
-        errors             – list of ErrorInstance objects (filtered)
-        output_path        – path to the annotated PDF
-        statistics         – document statistics dict
-        extracted_data     – raw extracted text and line data
-        reference_analysis – reference quality analysis from external API
-    """
-    detector = PDFErrorDetector(start_page=start_page)
-    errors, doc, statistics = detector.detect_errors(input_path, required_sections)
-
-    # Apply format whitelist: keep only errors whose type is enabled
-    if enabled_check_types is not None:
-        errors = [e for e in errors if e.error_type in enabled_check_types]
-
-    detector.annotate_pdf(doc, errors, output_path)
-    extracted_data = detector.export_extracted_data()
-    return errors, output_path, statistics, extracted_data, detector.reference_analysis
+    result = run_validation_pipeline(
+        pdf_path=input_path,
+        output_path=output_path,
+        required_sections=required_sections,
+        enabled_check_types=enabled_check_types,
+        start_page=start_page,
+    )
+    legacy_errors = to_legacy_error_instances(result.errors)
+    return legacy_errors, output_path, result.statistics, result.extracted_data, result.reference_analysis

@@ -58,11 +58,17 @@ Built with **Flask** (backend) + **Next.js** (frontend), containerised with Dock
 
 ```
 fixmypaper/
-├── app.py                  # Flask entry point
-├── pdf_processor.py        # PDF parsing and check logic
+├── backend/
+│   ├── app.py              # FastAPI backend entry point
+│   ├── pdf_processor.py    # PDF parsing and check logic
+│   ├── pix2text_processor.py
+│   └── formats.json
 ├── requirements.txt        # Python dependencies
 ├── Dockerfile.backend      # Backend container
 ├── docker-compose.yml      # Orchestration
+├── scripts/
+│   ├── setup.sh
+│   └── deploy_college_server.sh
 └── frontend/
     ├── app/                # Next.js app router
     ├── components/         # UI components

@@ -7,11 +7,11 @@ export default function Navbar() {
         {/* Brand */}
         <Link href="/" className="flex items-center gap-3 group">
           <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-light to-brand-dark text-white text-sm font-bold flex items-center justify-center">
-            PI
+            FMP
           </span>
           <span>
             <span className="block text-[15px] font-bold text-ink leading-tight">
-              PaperInsight
+              FixMyPaper
             </span>
             <span className="block text-[11px] text-ink-soft leading-tight">
               Research Quality Platform
@@ -21,16 +21,28 @@ export default function Navbar() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-7">
-          <a href="#platform" className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors">
+          <a
+            href="#platform"
+            className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors"
+          >
             Platform
           </a>
-          <a href="#capabilities" className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors">
+          <a
+            href="#capabilities"
+            className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors"
+          >
             Capabilities
           </a>
-          <a href="#roles" className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors">
+          <a
+            href="#roles"
+            className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors"
+          >
             Dashboards
           </a>
-          <a href="#coverage" className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors">
+          <a
+            href="#coverage"
+            className="text-sm font-semibold text-gray-600 hover:text-brand transition-colors"
+          >
             Coverage
           </a>
         </nav>

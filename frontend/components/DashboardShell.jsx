@@ -12,7 +12,7 @@ export default function DashboardShell({ caption, children }) {
               PI
             </span>
             <span>
-              <span className="block text-sm font-bold leading-tight">PaperInsight</span>
+              <span className="block text-sm font-bold leading-tight">FixMyPaper</span>
               <span className="block text-[11px] text-blue-200 leading-tight">{caption}</span>
             </span>
           </Link>

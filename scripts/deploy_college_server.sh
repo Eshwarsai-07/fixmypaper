@@ -170,7 +170,7 @@ Group=${APP_USER}
 WorkingDirectory=${MAIN_DIR}
 Environment=PYTHONUNBUFFERED=1
 Environment=REFERENCE_API_URL=http://127.0.0.1:${REFERENCE_PORT}/analyze
-ExecStart=${MAIN_DIR}/.venv/bin/gunicorn app:app --bind 127.0.0.1:${BACKEND_PORT} --workers 1 --timeout 1800
+ExecStart=${MAIN_DIR}/.venv/bin/gunicorn --worker-class uvicorn.workers.UvicornWorker backend.app:app --bind 127.0.0.1:${BACKEND_PORT} --workers 1 --timeout 1800
 Restart=always
 RestartSec=5
 

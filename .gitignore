@@ -2,53 +2,96 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyc
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
 venv/
 env/
 ENV/
+env.bak/
+venv.bak/
 .venv/
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
 
 # OS
-.DS_Store
 Thumbs.db
+.env.local
+.env.*.local
 
-# Runtime output files
-uploads/*.pdf
-uploads/grobid_outputs/*.tei.xml
-processed/*.pdf
-processed/*.json
-
-# Keep folders but not contents
-!uploads/.gitkeep
-!uploads/grobid_outputs/.gitkeep
-!processed/.gitkeep
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Testing artifacts
-test_sample.pdf
-test_sample_annotated.pdf
-
-# Environment variables
+# Environment (keep examples only)
 .env
 .env.server
 .env.local
 frontend/.env.local
 
-# Node / Next.js
+# Node / Frontend
 node_modules/
-frontend/node_modules/
-frontend/.next/
-frontend/out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .next/
+out/
+dist/
+
+# Runtime & Uploaded Files
+uploads/
+!uploads/.gitkeep
+!uploads/grobid_outputs/.gitkeep
+processed/
+!processed/.gitkeep
+
+# Test artifacts & temporary files
+test_*.py
+test_*.pdf
+*.pdf
+FIXES_APPLIED.py
+DEPLOYMENT_STATUS.md
+IEEE_FIXES_SUMMARY.md
+
+# Logs
+*.log
+logs/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Docker
+.docker/
+
+# Misc
+*.bak
+*.tmp
+.cache/

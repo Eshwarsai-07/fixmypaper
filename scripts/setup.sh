@@ -1,5 +1,10 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+cd "${ROOT_DIR}"
+
 echo "================================================"
 echo "Research Paper Error Checker - Setup Script"
 echo "================================================"
@@ -44,10 +49,10 @@ echo "  1. Activate the virtual environment:"
 echo "     source venv/bin/activate"
 echo ""
 echo "  2. Run the application:"
-echo "     python app.py"
+echo "     python -m backend.app"
 echo ""
 echo "  3. Open your browser to:"
-echo "     http://localhost:5000"
+echo "     http://localhost:7860"
 echo ""
 echo "To test the processor with a sample PDF:"
 echo "     python test_sample.py"
